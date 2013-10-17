@@ -11,18 +11,22 @@ module Samuel
       end
 
       def request_with_samuel(request, body = nil, &block)
-        request_time, response, exception_raised = Time.now, nil, false
-        begin
-          response = request_without_samuel(request, body, &block)
-        rescue Exception => response
-          exception_raised = true
+        if !started?
+          request_without_samuel(request, body, &block)
+        else
+          request_time, response, exception_raised = Time.now, nil, false
+          begin
+            response = request_without_samuel(request, body, &block)
+          rescue Exception => response
+            exception_raised = true
+          end
+
+          Samuel::Diary.record_request(self, request, request_time)
+          Samuel::Diary.record_response(self, request, response, Time.now)
+
+          raise response if exception_raised
+          response
         end
-
-        Samuel::Diary.record_request(self, request, request_time)
-        Samuel::Diary.record_response(self, request, response, Time.now)
-
-        raise response if exception_raised
-        response
       end
 
       def connect_with_samuel
